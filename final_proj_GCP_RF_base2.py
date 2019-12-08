@@ -105,11 +105,53 @@ RF_results = []
 ignore = ['I-12', 'C-22', 'Label']
 
 # Also ignore all categorical for testing purposes.
-for i in range(1,27): ignore.append('C-'+str(i))
-toyDF_trans = vector_transform(toyDF, ignore)
-miniValDF_trans = vector_transform(miniValDF, ignore)
+for i in range(1, 26): ignore.append('C-'+str(i))
+    
+def string_indexers(dataframe):
+    indexers = [StringIndexer(inputCol=all_columns[i], outputCol=all_columns[i]+"-Index").fit(dataframe) for 
+                i in category_indexes ]
+    pipeline = Pipeline(stages=indexers)
+    indexed_dataframe = pipeline.fit(dataframe).transform(dataframe)
+    for i in category_indexes:
+        indexed_dataframe = indexed_dataframe.drop(all_columns[i])
+    return indexed_dataframe
+
+all_columns = ['Label']
+for i in range(1,14): all_columns.append('I-'+str(i))
+for i in range(1,27): all_columns.append('C-'+str(i))
+    
+continuous_indexes = [i for i in range(1,14)]
+category_indexes = [i for i in range(14,40)]
+
+def assembler_indexers(dataframe):
+    assemblers = [VectorAssembler(inputCols=[all_columns[i]], outputCol=all_columns[i]+"-Vector") for i in continuous_indexes ]
+    pipeline = Pipeline(stages=assemblers)
+    assembled_dataframe = pipeline.fit(dataframe).transform(dataframe)
+    return assembled_dataframe
+
+#apply standard scaler to numeric columns
+def scaler_indexers(dataframe):
+    indexers = [StandardScaler(inputCol=all_columns[i]+"-Vector", outputCol=all_columns[i]+"-Scaled",
+                        withStd=True, withMean=False).fit(dataframe) for 
+                i in continuous_indexes ]
+    pipeline = Pipeline(stages=indexers)
+    scaled_dataframe = pipeline.fit(dataframe).transform(dataframe)
+    #for i in continuous_indexes:
+        #indexed_dataframe = indexed_dataframe.drop(all_columns[i])
+    return scaled_dataframe
+
+toyDF_scaled_indexed   = scalar_indexers(assembler_indexers(string_indexers(toyDF)))
+toyDF_scaled_indexed.show(5)
+
+# Select Integer features only.
+temp = ['Label']
+for i in range(1,14): temp.append('I-'+str(i))
+toyDF_trans = vector_transform(toyDF.select(temp), ignore)
+
+miniValDF_trans = vector_transform(miniValDF.select(temp), ignore)
+
 print('DFs transformed')
-for i in range(25,201, 25):
+for i in range(25,301, 25):
     time0 = time.time()
     rf = RandomForestClassifier(featuresCol = 'features', labelCol = 'Label', maxDepth = 8, numTrees=i)
     rfModel = rf.fit(toyDF_trans)
@@ -122,8 +164,13 @@ for i in range(25,201, 25):
     RF_results.append([i, log_loss, auroc, auprc, wall_time])
     print('finished training', i)
 RF_base_PD = pd.DataFrame(RF_results, columns=['# of Trees', 'Log Loss', 'Area Under ROC', 'Area Under PR', 'Wall Time'])
-RF_base_PD
-RF_base_PD.to_csv('gs://'+BUCKET+'/RF_base_PD.csv', index=False)
+print(RF_base_PD)
+print(RF_results)
+#RF_base_PD.to_csv('gs://'+BUCKET+'/RF_base_PD.csv', index=False)
+#RF_base_PD.to_parquet('gs://'+BUCKET+'/RF_base_PD.parquet')
+#RF_base_PD.to_pickle('gs://'+BUCKET+'/RF_base_PD.pkl')
+
+
 
 
 
