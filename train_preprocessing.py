@@ -119,8 +119,7 @@ def scaler_indexers(dataframe):
 train_scaled_indexedDF   = scaler_indexers(train_assembled_indexedDF)
 train_scaled_indexedDF.show(10)
 
-del train_assembled_indexedDF
-
+print("String Indexing is starting")
 def string_indexers(dataframe):
     indexers = [StringIndexer(inputCol=all_columns[i], outputCol=all_columns[i]+"-Index").fit(dataframe) for 
                 i in category_indexes ]
@@ -146,6 +145,8 @@ categorical_columns=["C-1-Index","C-2-Index","C-3-Index","C-4-Index","C-5-Index"
 
 train_S_indexed_ranked_DF = drop_threshold (train_S_indexedDF, 100, 999, categorical_columns)
 
+print("Threshold dropped - Brieman is starting")
+
 
 def Breiman(df, label_column, column_names):
     '''This function calculates the average of a given column conditional on the value of another column'''
@@ -154,19 +155,15 @@ def Breiman(df, label_column, column_names):
         w = Window().partitionBy(col)
         df = df.withColumn(col+"B", avg(label_column).over(w))
         df.drop(col)
-        df.persist()
     return df;
 
 train_S_indexed_breiman_DF = Breiman(train_S_indexed_ranked_DF, "Label", categorical_columns)
-
-train_S_indexed_breiman_DF.show(10)
-
 
 train_S_indexed_breiman_DF.write.parquet("gs://"+BUCKET+"/train_preprocessed.parquet")
 
 trainDF = spark.read.load("gs://"+BUCKET+"/train_preprocessed.parquet")
 
 trainDF.cache()
-print(toyDF.count())
+print(trainDF.count())
 
 trainDF.show()
