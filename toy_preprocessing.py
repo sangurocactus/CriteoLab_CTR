@@ -116,7 +116,7 @@ def scaler_indexers(dataframe):
 
 
 toy_scaled_indexedDF   = scaler_indexers(toy_assembled_indexedDF)
-mini_scaled_indexedDF.show(10)
+toy_scaled_indexedDF.show(10)
 
 del toy_assembled_indexedDF
 
